@@ -6,14 +6,19 @@ export const runtime = "nodejs"; // TTS requires Node (edge lacks crypto needed 
 // Initialize the TTS client using environment variables
 const client = new textToSpeech.TextToSpeechClient({
     credentials: {
-        client_email: process.env.GCP_CLIENT_EMAIL,
-        private_key: process.env.GCP_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        client_email: process.env.GCP_CLIENT_EMAIL?.replace(/"/g, ''),
+        private_key: process.env.GCP_PRIVATE_KEY?.replace(/"/g, '').replace(/\\n/g, '\n'),
     },
 });
 
 export async function POST(req: NextRequest) {
     try {
         console.log("TTS API called");
+        console.log("Environment check:", {
+            hasClientEmail: !!process.env.GCP_CLIENT_EMAIL,
+            hasPrivateKey: !!process.env.GCP_PRIVATE_KEY,
+            clientEmail: process.env.GCP_CLIENT_EMAIL?.substring(0, 10) + "...",
+        });
         const body = await req.json();
         console.log("TTS request body:", body);
 
@@ -53,6 +58,11 @@ export async function POST(req: NextRequest) {
         });
     } catch (e: unknown) {
         console.error("TTS API error:", e);
+        console.error("Error details:", {
+            name: e instanceof Error ? e.name : 'Unknown',
+            message: e instanceof Error ? e.message : 'Unknown error',
+            stack: e instanceof Error ? e.stack : 'No stack trace'
+        });
         return NextResponse.json({
             error: e instanceof Error ? e.message : "Unknown TTS error"
         }, { status: 500 });
