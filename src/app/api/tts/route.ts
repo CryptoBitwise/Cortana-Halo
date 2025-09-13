@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import textToSpeech from "@google-cloud/text-to-speech";
-import fs from "fs";
-import path from "path";
 
 export const runtime = "nodejs"; // TTS requires Node (edge lacks crypto needed for auth)
 
-// Initialize the TTS client using the service account file
-const serviceAccountPath = path.join(process.cwd(), 'service-account.json');
+// Initialize the TTS client using environment variables
 const client = new textToSpeech.TextToSpeechClient({
-    keyFilename: serviceAccountPath
+    credentials: {
+        client_email: process.env.GCP_CLIENT_EMAIL,
+        private_key: process.env.GCP_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    },
 });
 
 export async function POST(req: NextRequest) {
