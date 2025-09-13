@@ -1,21 +1,26 @@
 "use client";
 import React, { useEffect, useRef, useState, ChangeEvent, KeyboardEvent } from "react";
 
-interface Msg {
-  role: "user" | "assistant";
-  content: string;
+interface Msg { 
+  role: "user" | "assistant"; 
+  content: string; 
+  timestamp?: Date;
 }
 
-export default function ChatBox() {
+export default function CortanaUI() {
   const [msgs, setMsgs] = useState<Msg[]>([
     { role: "assistant", content: "Hello! I'm Cortana, your AI assistant. I'm here to help you with whatever you need - whether that's answering questions, helping with tasks, or just having a conversation. What can I do for you today?" },
   ]);
-  const [input, setInput] = useState("");
+  const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const [voiceOn, setVoiceOn] = useState(false);
-  const [voiceName, setVoiceName] = useState("en-US-Chirp3-HD-Achernar"); // Change this to your preferred voice
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voiceName, setVoiceName] = useState("en-US-Chirp3-HD-Achernar");
   const [speakingRate, setSpeakingRate] = useState(1.0);
   const [pitch, setPitch] = useState(0.0);
+  const [isConnected, setIsConnected] = useState(true);
+  const recognitionRef = useRef<any>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const chatLogRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when messages change
@@ -25,44 +30,81 @@ export default function ChatBox() {
     }
   }, [msgs]);
 
+  // Initialize speech recognition
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
+
+      recognitionRef.current.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setMessage(transcript);
+        handleSend(transcript);
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+    }
+  }, []);
+
   async function speak(text: string) {
-    if (!voiceOn) return;
     try {
+      setIsSpeaking(true);
       const res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text,
-          voiceName,
-          languageCode: "en-US",
-          speakingRate,
-          pitch
+        body: JSON.stringify({ 
+          text, 
+          voiceName, 
+          languageCode: "en-US", 
+          speakingRate, 
+          pitch 
         }),
       });
       const data = await res.json();
       if (data.audioContent) {
         const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+        audio.onended = () => setIsSpeaking(false);
         await audio.play();
       }
     } catch (e) {
       console.error("TTS failed:", e);
+      setIsSpeaking(false);
     }
   }
 
-  async function sendMessage(text: string) {
-    if (!text.trim() || busy) return;
+  const startListening = () => {
+    if (recognitionRef.current && !isListening) {
+      setIsListening(true);
+      recognitionRef.current.start();
+    }
+  };
 
+  const stopListening = () => {
+    if (recognitionRef.current && isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
+  };
+
+  async function handleSend(text: string = message) {
+    if (!text.trim() || busy) return;
+    
     setBusy(true);
-    setMsgs(prev => [...prev, { role: "user", content: text }]);
-    setInput("");
+    const userMessage = { role: "user" as const, content: text, timestamp: new Date() };
+    setMsgs(prev => [...prev, userMessage]);
+    setMessage("");
 
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [...msgs, { role: "user", content: text }],
-          userName: "User"
+        body: JSON.stringify({ 
+          messages: [...msgs, { role: "user", content: text }], 
+          userName: "User" 
         })
       });
 
@@ -72,299 +114,182 @@ export default function ChatBox() {
 
       const data = await res.json();
       const reply = data?.text || "Sorry, I couldn't process that request.";
-
-      setMsgs(prev => [...prev, { role: "assistant", content: reply }]);
-
-      if (voiceOn) {
-        await speak(reply);
-      }
+      
+      const aiMessage = { role: "assistant" as const, content: reply, timestamp: new Date() };
+      setMsgs(prev => [...prev, aiMessage]);
+      
+      // Always speak the response
+      await speak(reply);
     } catch (error) {
       const errorMsg = "Sorry, I'm having trouble connecting. Please try again.";
-      setMsgs(prev => [...prev, { role: "assistant", content: errorMsg }]);
+      const errorMessage = { role: "assistant" as const, content: errorMsg, timestamp: new Date() };
+      setMsgs(prev => [...prev, errorMessage]);
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      padding: '16px',
-      position: 'relative'
-    }}>
-      {/* Cortana-style background elements */}
-      <div style={{
-        position: 'absolute',
-        top: '10%',
-        left: '10%',
-        width: '300px',
-        height: '300px',
-        background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
-        borderRadius: '50%',
-        animation: 'float 6s ease-in-out infinite'
-      }}></div>
-      <div style={{
-        position: 'absolute',
-        bottom: '20%',
-        right: '15%',
-        width: '200px',
-        height: '200px',
-        background: 'radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%)',
-        borderRadius: '50%',
-        animation: 'float 8s ease-in-out infinite reverse'
-      }}></div>
-      <div style={{ maxWidth: '1024px', margin: '0 auto' }}>
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '16px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          border: '1px solid #e5e7eb',
-          overflow: 'hidden'
-        }}>
-          {/* Header */}
-          <div style={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            padding: '20px',
-            position: 'relative',
-            overflow: 'hidden'
-          }}>
-            <div style={{
-              position: 'absolute',
-              top: '-50%',
-              right: '-20%',
-              width: '200px',
-              height: '200px',
-              background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
-              borderRadius: '50%'
-            }}></div>
-            <h1 style={{
-              fontSize: '28px',
-              fontWeight: 'bold',
-              margin: 0,
-              background: 'linear-gradient(45deg, #fff, #e0e7ff)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text'
-            }}>
-              ⚡ Cortana
-            </h1>
-            <p style={{ color: '#e0e7ff', margin: '8px 0 0 0', fontSize: '16px' }}>
-              "I'm here to help. What do you need?"
-            </p>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-black flex flex-col">
+      {/* Header */}
+      <div className="p-6 text-center">
+        <h1 className="text-3xl font-bold text-white mb-2">CORTANA</h1>
+        <div className={`text-sm ${isConnected ? 'text-green-400' : 'text-red-400'}`}>
+          {isConnected ? '● Connected' : '● Disconnected'}
+        </div>
+      </div>
 
-          {/* Chat Messages */}
-          <div
-            ref={chatLogRef}
-            style={{
-              height: '384px',
-              overflowY: 'auto',
-              padding: '16px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px'
-            }}
-          >
-            {msgs.map((msg, i) => (
-              <div key={i} style={{
-                display: 'flex',
-                justifyContent: msg.role === "user" ? "flex-end" : "flex-start"
-              }}>
-                <div
-                  style={{
-                    maxWidth: '80%',
-                    borderRadius: msg.role === "user" ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                    padding: '12px 16px',
-                    backgroundColor: msg.role === "user" ? '#667eea' : '#f8fafc',
-                    color: msg.role === "user" ? 'white' : '#374151',
-                    border: msg.role === "assistant" ? '1px solid #e2e8f0' : 'none',
-                    boxShadow: msg.role === "assistant" ? '0 2px 4px rgba(0,0,0,0.05)' : '0 2px 8px rgba(102, 126, 234, 0.3)',
-                    position: 'relative'
-                  }}
-                >
-                  {msg.content}
+      {/* Animated Cortana Dot - Center */}
+      <div className="flex-1 flex items-center justify-center">
+        <div className="relative">
+          {/* Ambient glow - always present */}
+          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-400/20 to-purple-400/20 scale-150 animate-pulse"></div>
+          
+          {/* Outer energy rings */}
+          {(isListening || isSpeaking) && (
+            <>
+              <div className="absolute inset-0 rounded-full border-2 border-cyan-400 animate-ping scale-150"></div>
+              <div className="absolute inset-0 rounded-full border border-cyan-300 animate-pulse scale-125"></div>
+            </>
+          )}
+          
+          {/* Breathing idle animation rings */}
+          {!isListening && !isSpeaking && (
+            <>
+              <div className="absolute inset-0 rounded-full border border-purple-400/40 scale-110 animate-pulse"></div>
+              <div className="absolute inset-0 rounded-full border border-cyan-400/30 scale-120 animate-pulse" style={{animationDelay: '1s'}}></div>
+            </>
+          )}
+          
+          {/* Main core dot */}
+          <div className={`relative w-32 h-32 rounded-full flex items-center justify-center transition-all duration-500 ${
+            isSpeaking ? 'bg-gradient-to-r from-cyan-400 to-blue-500 scale-110' :
+            isListening ? 'bg-gradient-to-r from-green-400 to-emerald-500 scale-105' :
+            'bg-gradient-to-r from-purple-500 via-cyan-500 to-purple-500 animate-pulse'
+          }`}>
+            {/* Inner glow effect */}
+            <div className="absolute inset-2 rounded-full bg-white/20 animate-pulse"></div>
+            
+            {/* Core particle effect */}
+            <div className="relative">
+              {isSpeaking ? (
+                <div className="w-12 h-12 text-white animate-bounce flex items-center justify-center">
+                  🔊
                 </div>
-              </div>
-            ))}
-            {busy && (
-              <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                <div style={{
-                  backgroundColor: '#f3f4f6',
-                  color: '#1f2937',
-                  borderRadius: '16px',
-                  padding: '12px 16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <div style={{
-                    width: '16px',
-                    height: '16px',
-                    border: '2px solid #4b5563',
-                    borderTop: '2px solid transparent',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite'
-                  }}></div>
-                  <span>Thinking...</span>
+              ) : isListening ? (
+                <div className="w-12 h-12 text-white animate-pulse flex items-center justify-center">
+                  🎤
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* Input Area */}
-          <div style={{
-            borderTop: '1px solid #e5e7eb',
-            padding: '16px'
-          }}>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <input
-                type="text"
-                value={input}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
-                onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage(input);
-                  }
-                }}
-                placeholder="Ask Cortana anything... (Press Enter to send)"
-                style={{
-                  flex: 1,
-                  padding: '8px 16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '12px',
-                  outline: 'none'
-                }}
-                disabled={busy}
-              />
-              <button
-                onClick={() => sendMessage(input)}
-                disabled={busy || !input.trim()}
-                style={{
-                  padding: '8px 24px',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '12px',
-                  cursor: busy || !input.trim() ? 'not-allowed' : 'pointer',
-                  opacity: busy || !input.trim() ? 0.5 : 1,
-                  fontWeight: '500',
-                  boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                ⚡ Send
-              </button>
-            </div>
-          </div>
-
-          {/* Voice Controls */}
-          <div style={{
-            borderTop: '1px solid #e2e8f0',
-            padding: '16px',
-            background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <input
-                  type="checkbox"
-                  checked={voiceOn}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setVoiceOn(e.target.checked)}
-                  style={{
-                    borderRadius: '4px',
-                    accentColor: '#667eea'
-                  }}
-                />
-                <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                  🎤 Enable Cortana's Voice
-                </span>
-              </label>
-
-              {voiceOn && (
-                <>
-                  <input
-                    type="text"
-                    value={voiceName}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => setVoiceName(e.target.value)}
-                    placeholder="Voice name"
-                    style={{
-                      padding: '4px 8px',
-                      fontSize: '14px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '4px'
-                    }}
-                  />
-                  <input
-                    type="number"
-                    value={speakingRate}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => setSpeakingRate(parseFloat(e.target.value))}
-                    min="0.25"
-                    max="4"
-                    step="0.1"
-                    style={{
-                      padding: '4px 8px',
-                      fontSize: '14px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '4px',
-                      width: '80px'
-                    }}
-                  />
-                  <input
-                    type="number"
-                    value={pitch}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => setPitch(parseFloat(e.target.value))}
-                    min="-20"
-                    max="20"
-                    step="0.5"
-                    style={{
-                      padding: '4px 8px',
-                      fontSize: '14px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '4px',
-                      width: '80px'
-                    }}
-                  />
-                </>
+              ) : (
+                <div className="relative">
+                  <div className="w-8 h-8 bg-white rounded-full opacity-90 animate-pulse"></div>
+                  <div className="absolute inset-0 w-8 h-8 bg-cyan-300 rounded-full opacity-50 animate-ping"></div>
+                </div>
               )}
             </div>
+          </div>
 
-            {voiceOn && (
-              <button
-                onClick={() => speak("Hello! This is Cortana. How do I sound?")}
-                style={{
-                  padding: '6px 16px',
-                  fontSize: '14px',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontWeight: '500',
-                  boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)'
-                }}
-              >
-                🎵 Test Cortana's Voice
-              </button>
-            )}
+          {/* Floating particles around the dot */}
+          {!isListening && !isSpeaking && (
+            <div className="absolute inset-0">
+              <div className="absolute w-2 h-2 bg-cyan-400 rounded-full top-8 left-16 animate-ping opacity-70" style={{animationDelay: '0.5s'}}></div>
+              <div className="absolute w-1 h-1 bg-purple-400 rounded-full top-20 right-12 animate-pulse opacity-60" style={{animationDelay: '1.2s'}}></div>
+              <div className="absolute w-1.5 h-1.5 bg-blue-300 rounded-full bottom-12 left-20 animate-pulse opacity-50" style={{animationDelay: '2s'}}></div>
+              <div className="absolute w-1 h-1 bg-cyan-300 rounded-full bottom-16 right-16 animate-ping opacity-40" style={{animationDelay: '0.8s'}}></div>
+            </div>
+          )}
+
+          {/* Status text with glow */}
+          <div className="text-center mt-8">
+            <p className={`text-lg font-medium transition-all duration-300 ${
+              isSpeaking ? 'text-cyan-300 animate-pulse' :
+              isListening ? 'text-green-300 animate-pulse' :
+              'text-white/90'
+            }`}>
+              {isSpeaking ? 'Speaking...' :
+               isListening ? 'Listening...' :
+               'I\'m here and ready'}
+            </p>
           </div>
         </div>
       </div>
 
-      <style jsx>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        @keyframes float {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-20px) rotate(180deg); }
-        }
-      `}</style>
+      {/* Chat History */}
+      <div className="max-w-2xl mx-auto w-full px-4 max-h-64 overflow-y-auto mb-4" ref={chatLogRef}>
+        {msgs.map((msg, idx) => (
+          <div key={idx} className={`mb-3 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+            <div className={`inline-block p-3 rounded-lg max-w-xs ${
+              msg.role === 'user' 
+                ? 'bg-cyan-600 text-white' 
+                : 'bg-gray-700 text-gray-100'
+            }`}>
+              {msg.content}
+            </div>
+          </div>
+        ))}
+        {busy && (
+          <div className="text-left mb-3">
+            <div className="inline-block p-3 rounded-lg bg-gray-700 text-gray-100">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
+                <span>Thinking...</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Input Area */}
+      <div className="p-6">
+        <div className="max-w-2xl mx-auto">
+          <div className="flex gap-3 mb-4">
+            <input
+              type="text"
+              value={message}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setMessage(e.target.value)}
+              onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleSend()}
+              placeholder="Type a message or use voice..."
+              className="flex-1 px-4 py-3 bg-gray-800 text-white rounded-lg border border-gray-600 focus:border-cyan-400 focus:outline-none"
+            />
+            <button
+              onClick={() => handleSend()}
+              disabled={!message.trim() || busy}
+              className="px-6 py-3 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              ➤
+            </button>
+          </div>
+
+          {/* Voice Controls */}
+          <div className="flex justify-center gap-4">
+            <button
+              onClick={isListening ? stopListening : startListening}
+              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                isListening 
+                  ? 'bg-red-600 text-white hover:bg-red-700' 
+                  : 'bg-green-600 text-white hover:bg-green-700'
+              }`}
+            >
+              {isListening ? (
+                <>
+                  🎤 Stop Listening
+                </>
+              ) : (
+                <>
+                  🎤 Start Voice
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Audio element */}
+      <audio
+        ref={audioRef}
+        onEnded={() => setIsSpeaking(false)}
+        style={{ display: 'none' }}
+      />
     </div>
   );
 }
