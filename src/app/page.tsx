@@ -1,9 +1,9 @@
 "use client";
 import React, { useEffect, useRef, useState, ChangeEvent, KeyboardEvent } from "react";
 
-interface Msg { 
-  role: "user" | "assistant"; 
-  content: string; 
+interface Msg {
+  role: "user" | "assistant";
+  content: string;
   timestamp?: Date;
 }
 
@@ -56,12 +56,12 @@ export default function CortanaUI() {
       const res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          text, 
-          voiceName, 
-          languageCode: "en-US", 
-          speakingRate, 
-          pitch 
+        body: JSON.stringify({
+          text,
+          voiceName,
+          languageCode: "en-US",
+          speakingRate,
+          pitch
         }),
       });
       const data = await res.json();
@@ -92,7 +92,7 @@ export default function CortanaUI() {
 
   async function handleSend(text: string = message) {
     if (!text.trim() || busy) return;
-    
+
     setBusy(true);
     const userMessage = { role: "user" as const, content: text, timestamp: new Date() };
     setMsgs(prev => [...prev, userMessage]);
@@ -102,9 +102,9 @@ export default function CortanaUI() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          messages: [...msgs, { role: "user", content: text }], 
-          userName: "User" 
+        body: JSON.stringify({
+          messages: [...msgs, { role: "user", content: text }],
+          userName: "User"
         })
       });
 
@@ -114,10 +114,10 @@ export default function CortanaUI() {
 
       const data = await res.json();
       const reply = data?.text || "Sorry, I couldn't process that request.";
-      
+
       const aiMessage = { role: "assistant" as const, content: reply, timestamp: new Date() };
       setMsgs(prev => [...prev, aiMessage]);
-      
+
       // Always speak the response
       await speak(reply);
     } catch (error) {
@@ -141,9 +141,9 @@ export default function CortanaUI() {
       {/* Header */}
       <div style={{ padding: '24px', textAlign: 'center' }}>
         <h1 style={{ fontSize: '30px', fontWeight: 'bold', marginBottom: '8px' }}>CORTANA</h1>
-        <div style={{ 
-          fontSize: '14px', 
-          color: isConnected ? '#4ade80' : '#f87171' 
+        <div style={{
+          fontSize: '14px',
+          color: isConnected ? '#4ade80' : '#f87171'
         }}>
           {isConnected ? '● Connected' : '● Disconnected'}
         </div>
@@ -162,8 +162,8 @@ export default function CortanaUI() {
             alignItems: 'center',
             justifyContent: 'center',
             background: isSpeaking ? 'linear-gradient(90deg, #22d3ee 0%, #3b82f6 100%)' :
-                       isListening ? 'linear-gradient(90deg, #4ade80 0%, #10b981 100%)' :
-                       'linear-gradient(90deg, #a855f7 0%, #22d3ee 50%, #a855f7 100%)',
+              isListening ? 'linear-gradient(90deg, #4ade80 0%, #10b981 100%)' :
+                'linear-gradient(90deg, #a855f7 0%, #22d3ee 50%, #a855f7 100%)',
             transform: isSpeaking ? 'scale(1.1)' : isListening ? 'scale(1.05)' : 'scale(1)',
             transition: 'all 0.5s ease',
             boxShadow: '0 0 30px rgba(34, 211, 238, 0.5)'
@@ -214,8 +214,8 @@ export default function CortanaUI() {
               color: isSpeaking ? '#67e8f9' : isListening ? '#86efac' : 'rgba(255, 255, 255, 0.9)'
             }}>
               {isSpeaking ? 'Speaking...' :
-               isListening ? 'Listening...' :
-               'I\'m here and ready'}
+                isListening ? 'Listening...' :
+                  'I\'m here and ready'}
             </p>
           </div>
         </div>
