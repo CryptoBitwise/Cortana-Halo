@@ -8,9 +8,7 @@ interface Msg {
 }
 
 export default function CortanaUI() {
-  const [msgs, setMsgs] = useState<Msg[]>([
-    { role: "assistant", content: "Hello! I'm Cortana, your AI assistant. I'm here to help you with whatever you need - whether that's answering questions, helping with tasks, or just having a conversation. What can I do for you today?" },
-  ]);
+  const [msgs, setMsgs] = useState<Msg[]>([]);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -19,9 +17,40 @@ export default function CortanaUI() {
   const [speakingRate, setSpeakingRate] = useState(1.0);
   const [pitch, setPitch] = useState(0.0);
   const [isConnected, setIsConnected] = useState(true);
+  const [autoVoice, setAutoVoice] = useState(true);
+  const [userName, setUserName] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('cortana-username') || "User";
+    }
+    return "User";
+  });
   const recognitionRef = useRef<any>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const chatLogRef = useRef<HTMLDivElement>(null);
+
+  // Load data from localStorage on component mount
+  useEffect(() => {
+    const savedMsgs = localStorage.getItem('cortana-messages');
+    const savedAutoVoice = localStorage.getItem('cortana-autovoice');
+
+    if (savedMsgs) {
+      try {
+        const parsedMsgs = JSON.parse(savedMsgs);
+        setMsgs(parsedMsgs);
+      } catch (e) {
+        console.error('Failed to parse saved messages:', e);
+        // Fallback to default message
+        setMsgs([{ role: "assistant", content: "Hello! I'm Cortana, your AI assistant. I'm here to help you with whatever you need - whether that's answering questions, helping with tasks, or just having a conversation. What can I do for you today?" }]);
+      }
+    } else {
+      // First time - show welcome message
+      setMsgs([{ role: "assistant", content: "Hello! I'm Cortana, your AI assistant. I'm here to help you with whatever you need - whether that's answering questions, helping with tasks, or just having a conversation. What can I do for you today?" }]);
+    }
+
+    if (savedAutoVoice !== null) {
+      setAutoVoice(savedAutoVoice === 'true');
+    }
+  }, []);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -29,6 +58,25 @@ export default function CortanaUI() {
       chatLogRef.current.scrollTop = chatLogRef.current.scrollHeight;
     }
   }, [msgs]);
+
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    if (msgs.length > 0) {
+      localStorage.setItem('cortana-messages', JSON.stringify(msgs));
+    }
+  }, [msgs]);
+
+  // Save userName to localStorage whenever it changes
+  useEffect(() => {
+    if (userName !== "User") {
+      localStorage.setItem('cortana-username', userName);
+    }
+  }, [userName]);
+
+  // Save autoVoice to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('cortana-autovoice', autoVoice.toString());
+  }, [autoVoice]);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -104,7 +152,7 @@ export default function CortanaUI() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: [...msgs, { role: "user", content: text }],
-          userName: "User"
+          userName: userName
         })
       });
 
@@ -115,11 +163,22 @@ export default function CortanaUI() {
       const data = await res.json();
       const reply = data?.text || "Sorry, I couldn't process that request.";
 
+      // Check if user mentioned their name and update it
+      const nameMatch = text.match(/(?:my name is|i'm|i am|call me)\s+([a-zA-Z]+)/i);
+      if (nameMatch && nameMatch[1]) {
+        const newName = nameMatch[1];
+        if (newName !== userName) {
+          setUserName(newName);
+        }
+      }
+
       const aiMessage = { role: "assistant" as const, content: reply, timestamp: new Date() };
       setMsgs(prev => [...prev, aiMessage]);
 
-      // Always speak the response
-      await speak(reply);
+      // Speak the response if auto-voice is enabled
+      if (autoVoice) {
+        await speak(reply);
+      }
     } catch (error) {
       const errorMsg = "Sorry, I'm having trouble connecting. Please try again.";
       const errorMessage = { role: "assistant" as const, content: errorMsg, timestamp: new Date() };
@@ -139,13 +198,39 @@ export default function CortanaUI() {
       fontFamily: 'system-ui, -apple-system, sans-serif'
     }}>
       {/* Header */}
-      <div style={{ padding: '24px', textAlign: 'center' }}>
+      <div style={{ padding: '24px', textAlign: 'center', position: 'relative' }}>
         <h1 style={{ fontSize: '30px', fontWeight: 'bold', marginBottom: '8px' }}>CORTANA</h1>
         <div style={{
           fontSize: '14px',
           color: isConnected ? '#4ade80' : '#f87171'
         }}>
           {isConnected ? '● Connected' : '● Disconnected'}
+        </div>
+
+        {/* Auto Voice Toggle - Top Right */}
+        <div style={{
+          position: 'absolute',
+          top: '24px',
+          right: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          backgroundColor: 'rgba(0, 0, 0, 0.3)',
+          padding: '8px 12px',
+          borderRadius: '20px',
+          backdropFilter: 'blur(10px)'
+        }}>
+          <span style={{ fontSize: '12px', color: 'white' }}>🔊</span>
+          <input
+            type="checkbox"
+            checked={autoVoice}
+            onChange={(e) => setAutoVoice(e.target.checked)}
+            style={{
+              width: '16px',
+              height: '16px',
+              accentColor: '#0891b2'
+            }}
+          />
         </div>
       </div>
 
