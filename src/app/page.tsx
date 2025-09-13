@@ -130,82 +130,89 @@ export default function CortanaUI() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-black flex flex-col">
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #1e3a8a 0%, #7c3aed 50%, #000000 100%)',
+      display: 'flex',
+      flexDirection: 'column',
+      color: 'white',
+      fontFamily: 'system-ui, -apple-system, sans-serif'
+    }}>
       {/* Header */}
-      <div className="p-6 text-center">
-        <h1 className="text-3xl font-bold text-white mb-2">CORTANA</h1>
-        <div className={`text-sm ${isConnected ? 'text-green-400' : 'text-red-400'}`}>
+      <div style={{ padding: '24px', textAlign: 'center' }}>
+        <h1 style={{ fontSize: '30px', fontWeight: 'bold', marginBottom: '8px' }}>CORTANA</h1>
+        <div style={{ 
+          fontSize: '14px', 
+          color: isConnected ? '#4ade80' : '#f87171' 
+        }}>
           {isConnected ? '● Connected' : '● Disconnected'}
         </div>
       </div>
 
       {/* Animated Cortana Dot - Center */}
-      <div className="flex-1 flex items-center justify-center">
-        <div className="relative">
-          {/* Ambient glow - always present */}
-          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-400/20 to-purple-400/20 scale-150 animate-pulse"></div>
-          
-          {/* Outer energy rings */}
-          {(isListening || isSpeaking) && (
-            <>
-              <div className="absolute inset-0 rounded-full border-2 border-cyan-400 animate-ping scale-150"></div>
-              <div className="absolute inset-0 rounded-full border border-cyan-300 animate-pulse scale-125"></div>
-            </>
-          )}
-          
-          {/* Breathing idle animation rings */}
-          {!isListening && !isSpeaking && (
-            <>
-              <div className="absolute inset-0 rounded-full border border-purple-400/40 scale-110 animate-pulse"></div>
-              <div className="absolute inset-0 rounded-full border border-cyan-400/30 scale-120 animate-pulse" style={{animationDelay: '1s'}}></div>
-            </>
-          )}
-          
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'relative' }}>
           {/* Main core dot */}
-          <div className={`relative w-32 h-32 rounded-full flex items-center justify-center transition-all duration-500 ${
-            isSpeaking ? 'bg-gradient-to-r from-cyan-400 to-blue-500 scale-110' :
-            isListening ? 'bg-gradient-to-r from-green-400 to-emerald-500 scale-105' :
-            'bg-gradient-to-r from-purple-500 via-cyan-500 to-purple-500 animate-pulse'
-          }`}>
-            {/* Inner glow effect */}
-            <div className="absolute inset-2 rounded-full bg-white/20 animate-pulse"></div>
-            
+          <div style={{
+            position: 'relative',
+            width: '128px',
+            height: '128px',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: isSpeaking ? 'linear-gradient(90deg, #22d3ee 0%, #3b82f6 100%)' :
+                       isListening ? 'linear-gradient(90deg, #4ade80 0%, #10b981 100%)' :
+                       'linear-gradient(90deg, #a855f7 0%, #22d3ee 50%, #a855f7 100%)',
+            transform: isSpeaking ? 'scale(1.1)' : isListening ? 'scale(1.05)' : 'scale(1)',
+            transition: 'all 0.5s ease',
+            boxShadow: '0 0 30px rgba(34, 211, 238, 0.5)'
+          }}>
             {/* Core particle effect */}
-            <div className="relative">
+            <div style={{ position: 'relative' }}>
               {isSpeaking ? (
-                <div className="w-12 h-12 text-white animate-bounce flex items-center justify-center">
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '24px'
+                }}>
                   🔊
                 </div>
               ) : isListening ? (
-                <div className="w-12 h-12 text-white animate-pulse flex items-center justify-center">
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '24px'
+                }}>
                   🎤
                 </div>
               ) : (
-                <div className="relative">
-                  <div className="w-8 h-8 bg-white rounded-full opacity-90 animate-pulse"></div>
-                  <div className="absolute inset-0 w-8 h-8 bg-cyan-300 rounded-full opacity-50 animate-ping"></div>
-                </div>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  background: 'white',
+                  borderRadius: '50%',
+                  opacity: 0.9
+                }}></div>
               )}
             </div>
           </div>
 
-          {/* Floating particles around the dot */}
-          {!isListening && !isSpeaking && (
-            <div className="absolute inset-0">
-              <div className="absolute w-2 h-2 bg-cyan-400 rounded-full top-8 left-16 animate-ping opacity-70" style={{animationDelay: '0.5s'}}></div>
-              <div className="absolute w-1 h-1 bg-purple-400 rounded-full top-20 right-12 animate-pulse opacity-60" style={{animationDelay: '1.2s'}}></div>
-              <div className="absolute w-1.5 h-1.5 bg-blue-300 rounded-full bottom-12 left-20 animate-pulse opacity-50" style={{animationDelay: '2s'}}></div>
-              <div className="absolute w-1 h-1 bg-cyan-300 rounded-full bottom-16 right-16 animate-ping opacity-40" style={{animationDelay: '0.8s'}}></div>
-            </div>
-          )}
-
-          {/* Status text with glow */}
-          <div className="text-center mt-8">
-            <p className={`text-lg font-medium transition-all duration-300 ${
-              isSpeaking ? 'text-cyan-300 animate-pulse' :
-              isListening ? 'text-green-300 animate-pulse' :
-              'text-white/90'
-            }`}>
+          {/* Status text */}
+          <div style={{ textAlign: 'center', marginTop: '32px' }}>
+            <p style={{
+              fontSize: '18px',
+              fontWeight: '500',
+              color: isSpeaking ? '#67e8f9' : isListening ? '#86efac' : 'rgba(255, 255, 255, 0.9)'
+            }}>
               {isSpeaking ? 'Speaking...' :
                isListening ? 'Listening...' :
                'I\'m here and ready'}
@@ -215,23 +222,50 @@ export default function CortanaUI() {
       </div>
 
       {/* Chat History */}
-      <div className="max-w-2xl mx-auto w-full px-4 max-h-64 overflow-y-auto mb-4" ref={chatLogRef}>
+      <div style={{
+        maxWidth: '800px',
+        margin: '0 auto',
+        width: '100%',
+        padding: '0 16px',
+        maxHeight: '200px',
+        overflowY: 'auto',
+        marginBottom: '16px'
+      }} ref={chatLogRef}>
         {msgs.map((msg, idx) => (
-          <div key={idx} className={`mb-3 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-            <div className={`inline-block p-3 rounded-lg max-w-xs ${
-              msg.role === 'user' 
-                ? 'bg-cyan-600 text-white' 
-                : 'bg-gray-700 text-gray-100'
-            }`}>
+          <div key={idx} style={{
+            marginBottom: '12px',
+            textAlign: msg.role === 'user' ? 'right' : 'left'
+          }}>
+            <div style={{
+              display: 'inline-block',
+              padding: '12px',
+              borderRadius: '12px',
+              maxWidth: '300px',
+              backgroundColor: msg.role === 'user' ? '#0891b2' : '#374151',
+              color: 'white'
+            }}>
               {msg.content}
             </div>
           </div>
         ))}
         {busy && (
-          <div className="text-left mb-3">
-            <div className="inline-block p-3 rounded-lg bg-gray-700 text-gray-100">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
+          <div style={{ textAlign: 'left', marginBottom: '12px' }}>
+            <div style={{
+              display: 'inline-block',
+              padding: '12px',
+              borderRadius: '12px',
+              backgroundColor: '#374151',
+              color: 'white'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{
+                  width: '16px',
+                  height: '16px',
+                  border: '2px solid #9ca3af',
+                  borderTop: '2px solid transparent',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }}></div>
                 <span>Thinking...</span>
               </div>
             </div>
@@ -240,45 +274,57 @@ export default function CortanaUI() {
       </div>
 
       {/* Input Area */}
-      <div className="p-6">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex gap-3 mb-4">
+      <div style={{ padding: '24px' }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
             <input
               type="text"
               value={message}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setMessage(e.target.value)}
               onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleSend()}
               placeholder="Type a message or use voice..."
-              className="flex-1 px-4 py-3 bg-gray-800 text-white rounded-lg border border-gray-600 focus:border-cyan-400 focus:outline-none"
+              style={{
+                flex: 1,
+                padding: '12px',
+                backgroundColor: '#1f2937',
+                color: 'white',
+                borderRadius: '8px',
+                border: '1px solid #374151',
+                outline: 'none'
+              }}
             />
             <button
               onClick={() => handleSend()}
               disabled={!message.trim() || busy}
-              className="px-6 py-3 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#0891b2',
+                color: 'white',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: busy || !message.trim() ? 'not-allowed' : 'pointer',
+                opacity: busy || !message.trim() ? 0.5 : 1
+              }}
             >
               ➤
             </button>
           </div>
 
           {/* Voice Controls */}
-          <div className="flex justify-center gap-4">
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
             <button
               onClick={isListening ? stopListening : startListening}
-              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-                isListening 
-                  ? 'bg-red-600 text-white hover:bg-red-700' 
-                  : 'bg-green-600 text-white hover:bg-green-700'
-              }`}
+              style={{
+                padding: '12px 24px',
+                borderRadius: '8px',
+                fontWeight: '500',
+                backgroundColor: isListening ? '#dc2626' : '#16a34a',
+                color: 'white',
+                border: 'none',
+                cursor: 'pointer'
+              }}
             >
-              {isListening ? (
-                <>
-                  🎤 Stop Listening
-                </>
-              ) : (
-                <>
-                  🎤 Start Voice
-                </>
-              )}
+              {isListening ? '🎤 Stop Listening' : '🎤 Start Voice'}
             </button>
           </div>
         </div>
@@ -290,6 +336,13 @@ export default function CortanaUI() {
         onEnded={() => setIsSpeaking(false)}
         style={{ display: 'none' }}
       />
+
+      <style jsx>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
